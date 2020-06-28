@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+        <style>
+            .container {
+                width: 90%;
+                margin: auto;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .choose-file {
+                margin-top: 50px;
+            }
+            .progress-tips {
+                margin-top: 20px;
+                line-height: 2em;
+            }
+            #preview {
+                border: 10px solid #66CCFF;
+                box-sizing: border-box;
+                box-shadow: 0.3em 0.3em 1em rgba(0,0,0,0.3);
+                margin: 50px auto;
+                width: 100%;
+                height: auto;
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <label for="bigImage" class="choose-file">
+                <input type="file" id="bigImage" name="bigImage" accept="image/jpeg"/>
+            </label>
+            <div class="progress-tips"></div>
+            <img id="preview"/>
+        </div>
+        <script>
+            const baseUrl = 'http://localhost:3000'
+
+            window.BlobBuilder = window.MozBlobBuilder || window.WebKitBlobBuilder || window.BlobBuilder
+        
+            async function upload(blobOrFile, filename, fileurl) {
+                const formData = new FormData()
+                formData.append('filedata', blobOrFile)
+                formData.append('filename', filename)
+                formData.append('fileurl', fileurl)
+
+                const response = await fetch(baseUrl + '/upload', {
+                                            method: 'POST',
+                                            mode: 'cors',
+                                            body: formData
+                                        })
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                } else {
+                    return await response.json()
+                }
+            }
+
+            async function fileChangedHandler(e) {
+                try {
+                    const blob = this.files[0]
+                    const BYTES_PER_CHUNK = 300 * 1024  // 502KB chunk sizes.
+                    const SIZE = blob.size
+
+                    let start = 0
+                    let end = BYTES_PER_CHUNK
+                    let fileurl = ''
+
+                    let index = 1
+
+                    while(start < SIZE) {
+                        addTips(index)
+
+                        if ('mozSlice'in blob) {
+                            var chunk = blob.mozSlice(start, end)
+                        } else if ('webkitSlice' in blob){
+                            var chunk = blob.webkitSlice(start, end)
+                        } else {
+                            var chunk = blob.slice(start, end)
+                        }
+
+                        const res = await upload(chunk, blob.name, fileurl)
+
+                        start = end
+                        end = start + BYTES_PER_CHUNK
+
+                        index++
+
+                        fileurl = res.fileurl
+                    }
+
+                    await setPreview(fileurl)
+
+                } catch (error) {
+                    console.log(error)
+                }
+            }
+
+            function addTips(index) {
+                const div = document.createElement('div')
+                div.innerText = `正在上传第 ${index} 块......`
+                
+                document.getElementsByClassName('progress-tips')[0].appendChild(div)
+            }
+
+            async function setPreview(fileurl) {
+                const imageBlob = await downloadImage(fileurl)
+                const objectURL = URL.createObjectURL(imageBlob)
+
+                const img = document.getElementById('preview')
+                img.src = objectURL
+                img.style.display = 'block'
+            }
+
+            async function downloadImage(fileurl) {
+                const response = await fetch(baseUrl + fileurl, {
+                                            method: 'Get',
+                                            mode: 'cors'
+                                        })
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                } else {
+                    return await response.blob()
+                }
+            }
+
+            document.getElementById('bigImage').addEventListener('change', fileChangedHandler, false)
+        </script>
+    </body>
+</html>
