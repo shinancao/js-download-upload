@@ -1,6 +1,7 @@
 function route(handle, pathname, response, request) {
     console.log('About to route a request for ' + pathname)
-    const reg = /^(\/images\/).*(\.jpg)$/
+    
+    const reg = /.*(\.jpg)$/
     if (reg.test(pathname)) {
         // 请求的是图片
         handle['/download'](response, request)
