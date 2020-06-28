@@ -50,10 +50,19 @@ function download(response, request) {
 function imageList(response, request) {
     console.log('Request handler "imageList" was called.')
 
-    const list = [{id: 1, url: '/images/0bbc0f38234341.5eea491956f73.jpg'}, {id: 2, url: '/images/391e0b38234341.5eea382ab17d1.jpg'}, {id: 3, url: '/images/2aecdb38234341.5eea382ab1eb2.jpg'}]
-    response.writeHead(200, {'Content-Type': 'application/json'})
-    response.write(JSON.stringify(list))
-    response.end()
+    const dir = '/images/'
+    fs.readdir('.' + dir, function(err, files) {
+        let list = []
+        if (!err) {
+            list = files.filter(f => /(\.jpg)$/.test(f)).map((f, i) => {
+                return {id: i+1, url: `${dir}${f}`}
+            })
+        }
+
+        response.writeHead(200, {'Content-Type': 'application/json'})
+        response.write(JSON.stringify(list))
+        response.end()
+    })
 }
 
 exports.upload = upload
