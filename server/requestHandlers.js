@@ -1,8 +1,33 @@
 const fs = require('fs')
 const url = require('url')
+const formidable = require('formidable')
 
 function upload(response, request) {
+    console.log('Request handler "upload" was called.')
 
+    const form = new formidable.IncomingForm()
+    form.parse(request, function(error, fields, files) {
+        let fileurl = fields.fileurl
+        if (!fileurl) {
+            // 第一次传过来
+            let time = new Date().getTime()
+            fileurl = '/uploaded_files/' + time + '_' + fields.filename
+        }
+        
+        const tmpBuffer = fs.readFileSync(files.filedata.path)
+        fs.appendFile(`.${fileurl}`, tmpBuffer, 'binary', function(error) {
+            if (error) {
+                response.writeHead(500, {"Content-Type": "text/plain"});
+                response.write(error + "\n")
+                response.end()
+            } else {
+                response.writeHead(200, {'Content-Type': 'application/json'})
+                response.write(JSON.stringify({fileurl}))
+                response.end()
+            }
+        })
+        
+    })
 }
 
 function download(response, request) {
